@@ -3,15 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>پرتره‌ی ذره‌ای</title>
+<title>خداحافظ</title>
 <style>
-:root{--ink:#f3d6dc;--wine:#5a0f26;--line:#6b1830;--rose:#ff7aa8}
+:root{--ink:#f6d9e0;--wine:#5a0f26;--line:#6b1830;--rose:#ff7aa8}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:#000;color:var(--ink);font-family:Vazirmatn,Tahoma,"Noto Naskh Arabic","Segoe UI",sans-serif;overflow:hidden}
 canvas{position:fixed;inset:0;width:100%;height:100%;display:block;background:#000}
-#hint{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:28px;color:#b0587a;line-height:2.1;font-size:15px;pointer-events:none}
-#gear{position:fixed;top:max(10px,env(safe-area-inset-top));left:10px;z-index:5;opacity:.75}
-#panel{position:fixed;left:0;right:0;bottom:0;z-index:4;max-height:64vh;overflow:auto;background:rgba(14,3,6,.95);border-top:1px solid var(--line);padding:12px 14px calc(16px + env(safe-area-inset-bottom));transition:transform .35s ease}
+#gear{position:fixed;top:max(10px,env(safe-area-inset-top));left:10px;z-index:5;opacity:.7}
+#panel{position:fixed;left:0;right:0;bottom:0;z-index:4;max-height:66vh;overflow:auto;background:rgba(14,3,6,.95);border-top:1px solid var(--line);padding:12px 14px calc(16px + env(safe-area-inset-bottom));transition:transform .35s ease}
 #panel.hide{transform:translateY(105%)}
 .b,button{background:var(--wine);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 13px;font:inherit;font-size:14px;cursor:pointer}
 .b:active,button:active{background:#7d1634}
@@ -33,24 +32,20 @@ h3{font-size:14px;font-weight:600;margin:12px 0 4px;color:#e79ab5}
 </head>
 <body>
 <canvas id="cv"></canvas>
-<div id="hint">عکس و آهنگ را از «تنظیمات» انتخاب کنید،<br>سپس دکمه‌ی «شروع» را بزنید.</div>
 <button id="gear" class="b">⚙ تنظیمات</button>
 
 <div id="panel">
   <div class="r">
-    <label class="b">🖼 انتخاب عکس<input type="file" id="fImg" accept="image/*" hidden></label>
     <label class="b">🎵 انتخاب آهنگ<input type="file" id="fAud" accept="audio/*" hidden></label>
     <button id="bGo">▶ شروع</button>
     <button id="bRe">⏮ از اول</button>
   </div>
   <audio id="audio" controls preload="auto"></audio>
   <div class="g">
-    <label>تعداد ذرات پرتره: <b id="vP">2200</b><input type="range" id="nP" min="800" max="4000" step="100" value="2200"></label>
-    <label>تعداد ذرات متن: <b id="vT">650</b><input type="range" id="nT" min="200" max="1200" step="50" value="650"></label>
+    <label>ذرات متن: <b id="vT">1800</b><input type="range" id="nT" min="600" max="3500" step="100" value="1800"></label>
+    <label>تعداد پروانه: <b id="vB">12</b><input type="range" id="nB" min="0" max="24" step="1" value="12"></label>
     <label>نرخ فریم
       <select id="fps"><option value="30">۳۰ (کم‌مصرف)</option><option value="45">۴۵</option><option value="60">۶۰</option></select></label>
-    <label>پایان تشکیل پرتره (ثانیه، ۰ = خودکار)<input type="number" id="pEnd" value="0" min="0" step="1" inputmode="decimal"></label>
-    <label style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="full"> نمایش کامل پرتره (پیش‌نمایش)</label>
   </div>
   <div id="tm">زمان فعلی: ۰٫۰ ثانیه</div>
   <h3>زمان‌بندی متن (ثانیه)</h3>
@@ -64,10 +59,9 @@ h3{font-size:14px;font-weight:600;margin:12px 0 4px;color:#e79ab5}
 <script>
 (function(){
 "use strict";
-const LINES=["قسم خوردم تا بعد از این","عاشق نشم","حالا که آمد دیگری","من میروم من میروم","خدا حافظ","خدا حافظ","حالا که دست دیگری","برهم زده دنیای ما","حالا که برهم می خورد","آرامش فردای ما","خدا حافظ","خدا حافظ"];
+const LINES=["خوردم قسم تا بعد از این","با چشم باز عاشق شوم","حالا که آمد دیگری","من میروم من میروم","خدا حافظ خدا حافظ","حالا که دست دیگری","برهم زده دنیای ما","حالا که برهم می خورد","آرامش فردای ما","خدا حافظ خدا حافظ"];
 const FONT='Vazirmatn,Tahoma,"Noto Naskh Arabic","Segoe UI",sans-serif';
-const TCOL=["#ff3355","#d81b48","#ff6f9c","#b0123a","#ff8fb3","#e63b5f"];
-const KEY="hp_timing_v1";
+const KEY="kh_timing_v1";
 const $=s=>document.querySelector(s);
 const cv=$("#cv"),ctx=cv.getContext("2d"),audio=$("#audio"),panel=$("#panel");
 const coarse=matchMedia("(pointer:coarse)").matches;
@@ -75,15 +69,19 @@ const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const ease=q=>q<.5?4*q*q*q:1-Math.pow(-2*q+2,3)/2;
 const rnd=(a,b)=>a+Math.random()*(b-a);
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function mul(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 $("#fps").value=coarse?"30":"60";
+if(coarse){$("#nB").value=9;$("#vB").textContent=9;$("#nT").value=1500;$("#vT").textContent=1500}
 
-const S={img:null,P:[],pool:[],tc:[],cur:-2,W:0,H:0,dpr:1,hasAudio:false,running:false,preview:0,sz:2,nt:0,fps:coarse?30:60};
+const S={pool:[],tc:[],cur:-2,W:0,H:0,dpr:1,hasAudio:false,running:false,preview:0,nt:0,tsz:2,fps:coarse?30:60,B:[],E:[]};
 
 /* ---------- timings ---------- */
-let TIM=LINES.map((_,i)=>({s:i*4,e:i*4+3.6}));
+const dflt=()=>LINES.map((_,i)=>({s:24+i*24,e:24+i*24+20}));
+let TIM=dflt();
 try{const j=JSON.parse(localStorage.getItem(KEY)||"null");if(j&&j.length===LINES.length)TIM=j}catch(e){}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(TIM))}catch(e){}}
 function curT(){return S.hasAudio?audio.currentTime:S.preview}
+function seek(t){if(S.hasAudio)audio.currentTime=t;else S.preview=t}
 const rowsEl=$("#rows");
 function buildRows(){
   rowsEl.innerHTML="";
@@ -97,108 +95,111 @@ function buildRows(){
     b.oninput=()=>{TIM[i].e=Math.max(0,parseFloat(b.value)||0);save()};
     k1.onclick=()=>{TIM[i].s=curT();a.value=TIM[i].s.toFixed(1);save()};
     k2.onclick=()=>{TIM[i].e=curT();b.value=TIM[i].e.toFixed(1);save()};
-    k3.onclick=()=>{seek(Math.max(0,TIM[i].s-0.3));play()};
+    k3.onclick=()=>{seek(Math.max(0,TIM[i].s-.3));play()};
     rowsEl.appendChild(d);
   });
 }
-function seek(t){if(S.hasAudio)audio.currentTime=t;else S.preview=t}
 $("#bAuto").onclick=()=>{
-  const dur=(isFinite(audio.duration)&&audio.duration>0)?audio.duration:LINES.length*4;
-  const per=dur/LINES.length;
-  TIM=LINES.map((_,i)=>({s:+(i*per).toFixed(1),e:+(i*per+per*.88).toFixed(1)}));save();buildRows();
+  const dur=(isFinite(audio.duration)&&audio.duration>0)?audio.duration:240,a0=dur*.08,per=(dur*.86)/LINES.length;
+  TIM=LINES.map((_,i)=>({s:+(a0+i*per).toFixed(1),e:+(a0+i*per+per*.85).toFixed(1)}));save();buildRows();
 };
-$("#bReset").onclick=()=>{TIM=LINES.map((_,i)=>({s:i*4,e:i*4+3.6}));save();buildRows()};
+$("#bReset").onclick=()=>{TIM=dflt();save();buildRows()};
 
-/* ---------- glow sprites ---------- */
-function sprite(rgb){
+/* ---------- sprites ---------- */
+function glowSprite(rgb){
   const c=document.createElement("canvas");c.width=c.height=48;const x=c.getContext("2d");
   const g=x.createRadialGradient(24,24,0,24,24,24);
   g.addColorStop(0,"rgba("+rgb+",.95)");g.addColorStop(.35,"rgba("+rgb+",.28)");g.addColorStop(1,"rgba("+rgb+",0)");
   x.fillStyle=g;x.fillRect(0,0,48,48);return c;
 }
-const GW=sprite("255,190,170"),GP=sprite("255,70,120");
+const GP=glowSprite("255,70,120"),GW=glowSprite("255,180,190");
 
-/* ---------- sizing ---------- */
-function resize(){
-  S.dpr=Math.min(window.devicePixelRatio||1,coarse?1.5:2);
-  S.W=cv.width=Math.max(2,Math.round(innerWidth*S.dpr));
-  S.H=cv.height=Math.max(2,Math.round(innerHeight*S.dpr));
-  layout();S.tc=[];S.cur=-2;buildPool();
+/* ---------- butterfly (wing curves from the reference) ---------- */
+const UPPER=[[[0,0],[5.8,15.5],[21.5,38],[37.5,40]],[[37.5,40],[38.5,28.5],[31,3.5],[23,0]],[[23,0],[15,0.7],[5.5,-0.1],[0,0]]];
+const LOWER=[[[0,0],[6.5,-0.1],[17,0.8],[23.5,-1.4]],[[23.5,-1.4],[25,-10.5],[17,-30],[10.5,-30]],[[10.5,-30],[4.5,-29],[0.8,-9],[0,0]]];
+const COUNTS=[12,26,12],KS=2.2,OY=Math.ceil(42*KS)+2;
+function cubic(p0,p1,p2,p3,u){const v=1-u;return[v*v*v*p0[0]+3*v*v*u*p1[0]+3*v*u*u*p2[0]+u*u*u*p3[0],v*v*v*p0[1]+3*v*v*u*p1[1]+3*v*u*u*p2[1]+u*u*u*p3[1]]}
+function makeSprite(rgb,seed){
+  const r=mul(seed),c=document.createElement("canvas");c.width=Math.ceil(40*KS)+4;c.height=Math.ceil(72*KS)+4;
+  const x=c.getContext("2d"),P=p=>[1+p[0]*KS,OY-p[1]*KS];
+  for(const set of [UPPER,LOWER]){
+    x.fillStyle="rgba(20,3,10,.9)";x.beginPath();
+    set.forEach((s,i)=>{for(let k=i?1:0;k<=40;k++){const q=P(cubic(s[0],s[1],s[2],s[3],k/40));(i===0&&k===0)?x.moveTo(q[0],q[1]):x.lineTo(q[0],q[1])}});
+    x.closePath();x.fill();
+    set.forEach((s,i)=>{
+      for(let k=1;k<=COUNTS[i];k++){
+        const e=cubic(s[0],s[1],s[2],s[3],k/COUNTS[i]),dx=e[0],dy=e[1],bend=(Math.abs(dy)*.04+Math.abs(dx)*.02);
+        const c1=[dx*.24+bend*.2,dy*.34],c2=[dx*.72+bend,dy*.82],sh=.35+r()*.65;
+        x.strokeStyle="rgba("+(rgb[0]*sh|0)+","+(rgb[1]*sh|0)+","+(rgb[2]*sh|0)+",.95)";x.lineWidth=.9;x.beginPath();
+        for(let j=0;j<=10;j++){const q=P(cubic([0,0],c1,c2,e,j/10));j?x.lineTo(q[0],q[1]):x.moveTo(q[0],q[1])}
+        x.stroke();
+      }
+      x.strokeStyle="rgb("+Math.min(255,rgb[0]+30)+","+Math.min(255,rgb[1]+50)+","+Math.min(255,rgb[2]+50)+")";x.lineWidth=1.3;x.beginPath();
+      for(let k=0;k<=40;k++){const q=P(cubic(s[0],s[1],s[2],s[3],k/40));k?x.lineTo(q[0],q[1]):x.moveTo(q[0],q[1])}
+      x.stroke();
+    });
+  }
+  x.fillStyle="#ffe3ea";
+  for(let i=0;i<30;i++){const q=P(cubic(...UPPER[1],r()));x.globalAlpha=.4+r()*.5;x.fillRect(q[0]-1-r()*10,q[1]+r()*14,1.4,1.4)}
+  return c;
 }
-let rt;addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(resize,150)});
-addEventListener("orientationchange",()=>setTimeout(resize,250));
+const SPR=[makeSprite([255,105,150],3),makeSprite([235,40,85],7),makeSprite([255,185,200],11)];
+function buildButterflies(){
+  const n=+$("#nB").value,r=mul(99);S.B=[];
+  for(let i=0;i<n;i++)S.B.push({sp:SPR[i%3],rx:.28+r()*.2,ry:.1+r()*.22,wx:.14+r()*.22,wy:.17+r()*.26,px:r()*6.28,py:r()*6.28,fs:7+r()*4,fp:r()*6.28,span:.05+r()*.04});
+}
+function drawB(b,t){
+  const W=S.W,H=S.H,P=tt=>[W/2+b.rx*W*Math.sin(b.wx*tt+b.px)+b.rx*W*.18*Math.sin(b.wx*2.7*tt+b.px*2),H/2+b.ry*H*Math.sin(b.wy*tt+b.py)+b.ry*H*.2*Math.cos(b.wy*3.1*tt)];
+  const p=P(t),q=P(t+.06),ang=Math.atan2(q[1]-p[1],q[0]-p[0])+Math.PI/2;
+  const span=Math.max(26*S.dpr,Math.min(W,H*1.2)*b.span),s=span/(76*KS),f=.34+.66*(.5+.5*Math.cos(t*b.fs+b.fp));
+  ctx.save();ctx.translate(p[0],p[1]);
+  ctx.globalCompositeOperation="lighter";ctx.globalAlpha=.3*S.bfa;const g=span*.75;ctx.drawImage(GP,-g,-g,g*2,g*2);
+  ctx.globalCompositeOperation="source-over";ctx.globalAlpha=S.bfa;ctx.rotate(ang);ctx.scale(s,s);
+  for(const sd of [1,-1]){ctx.save();ctx.scale(sd*f,1);ctx.drawImage(b.sp,0,-OY);ctx.restore()}
+  ctx.fillStyle="#ffd2dc";ctx.beginPath();ctx.ellipse(0,0,2.6,11,0,0,6.283);ctx.fill();
+  ctx.restore();
+}
 
-/* ---------- portrait ---------- */
-function buildPortrait(){
-  if(!S.img)return;
-  const N=+$("#nP").value,iw=S.img.naturalWidth,ih=S.img.naturalHeight;
-  const k=Math.min(1,640/Math.max(iw,ih)),sw=Math.max(2,Math.round(iw*k)),sh=Math.max(2,Math.round(ih*k));
-  const oc=document.createElement("canvas");oc.width=sw;oc.height=sh;
-  const o=oc.getContext("2d",{willReadFrequently:true});o.drawImage(S.img,0,0,sw,sh);
-  const d=o.getImageData(0,0,sw,sh).data;
-  const cell=Math.sqrt(sw*sh/(N*1.7)),cols=Math.ceil(sw/cell),rows=Math.ceil(sh/cell),list=[];
-  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
-    const x=(c+Math.random())*cell,y=(r+Math.random())*cell;
-    if(x>=sw||y>=sh)continue;
-    const i=((y|0)*sw+(x|0))*4,R=d[i],G=d[i+1],B=d[i+2],lum=(.3*R+.59*G+.11*B)/255;
-    if(Math.random()<Math.min(1,.1+lum*1.3))list.push({x,y,R,G,B});
-  }
-  shuffle(list);list.length=Math.min(list.length,N);
-  S.cellFrac=cell/sw;S.iw=iw;S.ih=ih;
-  S.P=list.map((p,n)=>{
-    const u=p.x/sw,v=p.y/sh,dist=Math.min(1,Math.hypot(u-.5,v-.45)/.7),side=Math.random()*4|0,r=Math.random();
-    const sx=side===0?r:side===1?r:side===2?-.12:1.12,sy=side===0?-.12:side===1?1.12:r;
-    return{u,v,col:"rgb("+p.R+","+p.G+","+p.B+")",t:clamp(.55*dist+.45*Math.random(),0,1),sx,sy,sw:rnd(-.28,.28),ph:Math.random()*6.283,gl:n%9===0,tx:0,ty:0};
-  });
-  layout();
-}
-function layout(){
-  if(!S.img||!S.P.length)return;
-  const W=S.W,H=S.H,areaH=H*.8,sc=Math.min(W*.96/S.iw,areaH*.96/S.ih);
-  const dw=S.iw*sc,dh=S.ih*sc,ox=(W-dw)/2,oy=(areaH-dh)/2+H*.01;
-  for(const p of S.P){p.tx=ox+p.u*dw;p.ty=oy+p.v*dh}
-  S.sz=Math.max(1.4*S.dpr,S.cellFrac*dw*1.35);
-}
-function drawPortrait(P,time){
-  const W=S.W,H=S.H,sz=S.sz,h=sz/2,fl=.7*S.dpr,glow=[];
-  for(const p of S.P){
-    let q=(P-p.t*.75)/.25;if(q<=0)continue;if(q>1)q=1;
-    const e=ease(q),bx=p.sx*W,by=p.sy*H,dx=p.tx-bx,dy=p.ty-by,s=Math.sin(Math.PI*q)*p.sw;
-    let x=bx+dx*e-dy*s,y=by+dy*e+dx*s,a=Math.min(1,q*5);
-    if(q===1){
-      x+=Math.sin(time*.0009+p.ph)*fl;y+=Math.cos(time*.0011+p.ph*1.3)*fl;
-      a*=.88+.12*Math.sin(time*.002+p.ph*3);
-      if(p.gl)glow.push(x,y,a);
-    }
-    ctx.globalAlpha=a;ctx.fillStyle=p.col;ctx.fillRect(x-h,y-h,sz,sz);
-  }
-  if(glow.length){
-    ctx.globalCompositeOperation="lighter";const g=sz*3.2;
-    for(let i=0;i<glow.length;i+=3){ctx.globalAlpha=.16*glow[i+2];ctx.drawImage(GW,glow[i]-g,glow[i+1]-g,g*2,g*2)}
-    ctx.globalCompositeOperation="source-over";
+/* ---------- embers ---------- */
+function buildEmbers(){S.E=[];for(let i=0;i<(coarse?40:80);i++)S.E.push({x:Math.random(),y:Math.random(),v:rnd(.01,.035),r:rnd(.8,2.2),ph:Math.random()*6.28})}
+function drawEmbers(t,dt){
+  for(const e of S.E){
+    e.y-=e.v*dt;if(e.y<-.02){e.y=1.02;e.x=Math.random()}
+    const x=(e.x+Math.sin(t*.4+e.ph)*.01)*S.W,y=e.y*S.H,a=.25+.25*Math.sin(t*1.3+e.ph);
+    ctx.globalAlpha=a;ctx.fillStyle="#b3173f";const z=e.r*S.dpr;ctx.fillRect(x,y,z,z);
   }
   ctx.globalAlpha=1;
 }
 
 /* ---------- text ---------- */
+const STOPS=[[176,16,58],[255,40,75],[255,125,170]];
+function pal(u){u=clamp(u,0,1)*2;const i=Math.min(1,u|0),f=u-i,a=STOPS[i],b=STOPS[i+1];return"rgb("+(a[0]+(b[0]-a[0])*f|0)+","+(a[1]+(b[1]-a[1])*f|0)+","+(a[2]+(b[2]-a[2])*f|0)+")"}
 function buildPool(){
   const M=+$("#nT").value;S.pool=[];
-  for(let i=0;i<M;i++)S.pool.push({col:TCOL[i%TCOL.length],d:Math.random()*.35,ph:Math.random()*6.283,ax:0,ay:0,bx:0,by:0,tx:0,ty:0,gl:i%7===0});
+  for(let i=0;i<M;i++)S.pool.push({col:"#f33",d:0,sw:rnd(-.5,.5),ph:Math.random()*6.283,ax:0,ay:0,bx:0,by:0,tx:0,ty:0,gl:i%5===0});
 }
 function textPoints(i){
   if(S.tc[i])return S.tc[i];
   const W=S.W,H=S.H,M=S.pool.length,str=LINES[i],c=document.createElement("canvas"),x=c.getContext("2d",{willReadFrequently:true});
   const F=s=>"700 "+s+"px "+FONT;
-  let fs=Math.min(H*.075,W*.11);x.font=F(fs);
-  while(x.measureText(str).width>W*.9&&fs>12){fs-=2;x.font=F(fs)}
-  const th=Math.ceil(fs*1.7);c.width=W;c.height=th;
-  x.font=F(fs);x.direction="rtl";x.textAlign="center";x.textBaseline="middle";x.fillStyle="#fff";x.fillText(str,W/2,th/2);
-  const d=x.getImageData(0,0,W,th).data,top=H*.9-th/2;
-  let step=Math.max(2,Math.round(fs/24)),pts;
+  const base=Math.min(H*.1,W*.13);let fs=base,lines=[str];x.font=F(fs);
+  const w1=()=>x.measureText(lines[0]).width;
+  while(w1()>W*.88&&fs>base*.62){fs-=2;x.font=F(fs)}
+  if(w1()>W*.88){
+    const w=str.split(" "),h=Math.ceil(w.length/2);lines=[w.slice(0,h).join(" "),w.slice(h).join(" ")];
+    fs=base;x.font=F(fs);
+    const mw=()=>Math.max(...lines.map(l=>x.measureText(l).width));
+    while(mw()>W*.88&&fs>10){fs-=2;x.font=F(fs)}
+  }
+  const lh=fs*1.5,th=Math.ceil(lh*lines.length+fs*.4);c.width=W;c.height=th;
+  x.font=F(fs);x.direction="rtl";x.textAlign="center";x.textBaseline="middle";x.fillStyle="#fff";
+  lines.forEach((l,k)=>x.fillText(l,W/2,fs*.2+lh*(k+.5)));
+  const d=x.getImageData(0,0,W,th).data,top=H*.5-th/2;
+  let step=Math.max(2,Math.round(fs/30)),pts;
   for(;;){
     pts=[];
     for(let y=0;y<th;y+=step)for(let xx=0;xx<W;xx+=step){
-      const jx=Math.min(W-1,xx+Math.random()*step*.6),jy=Math.min(th-1,y+Math.random()*step*.6);
+      const jx=Math.min(W-1,xx+Math.random()*step*.55),jy=Math.min(th-1,y+Math.random()*step*.55);
       if(d[((jy|0)*W+(jx|0))*4+3]>110)pts.push({x:jx,y:jy+top});
     }
     if(pts.length<=M||step>60)break;step++;
@@ -206,12 +207,15 @@ function textPoints(i){
   shuffle(pts);if(pts.length>M)pts.length=M;
   return S.tc[i]={pts,sz:Math.max(1.5*S.dpr,step*.8)};
 }
+const DM=.5;
 function assign(i){
-  const {pts,sz}=textPoints(i),W=S.W,H=S.H;S.nt=pts.length;S.tsz=sz;
+  const {pts,sz}=textPoints(i),W=S.W;S.nt=pts.length;S.tsz=sz;
   for(let k=0;k<pts.length;k++){
-    const p=S.pool[k],q=pts[k],a=Math.random()*6.283,r=rnd(40,150)*S.dpr;
-    p.tx=q.x;p.ty=q.y;p.ax=rnd(0,W);p.ay=rnd(0,H);
-    p.bx=q.x+Math.cos(a)*r;p.by=q.y+Math.sin(a)*r-rnd(10,80)*S.dpr;
+    const p=S.pool[k],q=pts[k],a=Math.random()*6.283,r=rnd(.05,.4)*W,a2=Math.random()*6.283,r2=rnd(40,160)*S.dpr;
+    p.tx=q.x;p.ty=q.y;p.ax=q.x+Math.cos(a)*r;p.ay=q.y+Math.sin(a)*r*.8;
+    p.bx=q.x+Math.cos(a2)*r2;p.by=q.y+Math.sin(a2)*r2-rnd(20,120)*S.dpr;
+    p.d=DM*(.65*(1-q.x/W)+.35*Math.random());
+    p.col=pal(q.x/W*.6+Math.random()*.4);
   }
 }
 function drawText(t,time){
@@ -219,43 +223,48 @@ function drawText(t,time){
   for(let i=0;i<TIM.length;i++){const a=TIM[i];if(t>=a.s&&t<a.e&&a.s>=bs){idx=i;bs=a.s}}
   if(idx!==S.cur){S.cur=idx;if(idx>=0)assign(idx)}
   if(idx<0)return;
-  const a=TIM[idx],IN=.9,OUT=.8,fin=t-a.s,fout=a.e-t,sz=S.tsz,h=sz/2,glow=[],fl=.6*S.dpr;
+  const a=TIM[idx],dur=a.e-a.s,IN=Math.min(3.2,dur*.55),OUT=Math.min(2,dur*.35),fin=t-a.s,fout=a.e-t;
+  const sz=S.tsz,h=sz/2,glow=[],fl=.5*S.dpr,K=1+DM;
   for(let k=0;k<S.nt;k++){
-    const p=S.pool[k],f=clamp(fin/IN*1.35-p.d,0,1),o=clamp((OUT-fout)/OUT*1.35-p.d,0,1);
+    const p=S.pool[k],f=clamp(fin/IN*K-p.d,0,1),o=clamp((OUT-fout)/OUT*K-p.d,0,1);
     if(f<=0)continue;
-    const e=ease(f);let x=p.ax+(p.tx-p.ax)*e,y=p.ay+(p.ty-p.ay)*e;
-    if(f===1&&o===0){x+=Math.sin(time*.002+p.ph)*fl;y+=Math.cos(time*.0023+p.ph)*fl}
+    const e=ease(f),dx=p.tx-p.ax,dy=p.ty-p.ay,s=Math.sin(Math.PI*f)*p.sw;
+    let x=p.ax+dx*e-dy*s*.5,y=p.ay+dy*e+dx*s*.5;
+    if(f===1&&o===0){x+=Math.sin(time*.0018+p.ph)*fl;y+=Math.cos(time*.002+p.ph)*fl}
     if(o>0){const eo=ease(o);x+=(p.bx-x)*eo;y+=(p.by-y)*eo}
     const al=Math.min(1,f*3)*(1-o);
     ctx.globalAlpha=al;ctx.fillStyle=p.col;ctx.fillRect(x-h,y-h,sz,sz);
     if(p.gl&&al>.05)glow.push(x,y,al);
   }
   if(glow.length){
-    ctx.globalCompositeOperation="lighter";const g=sz*3.6;
-    for(let i=0;i<glow.length;i+=3){ctx.globalAlpha=.2*glow[i+2];ctx.drawImage(GP,glow[i]-g,glow[i+1]-g,g*2,g*2)}
+    ctx.globalCompositeOperation="lighter";const g=sz*3.4;
+    for(let i=0;i<glow.length;i+=3){ctx.globalAlpha=.17*glow[i+2]*(.8+.2*Math.sin(time*.003+i));ctx.drawImage(GP,glow[i]-g,glow[i+1]-g,g*2,g*2)}
     ctx.globalCompositeOperation="source-over";
   }
   ctx.globalAlpha=1;
 }
 
 /* ---------- main loop ---------- */
-let last=0,lblT=0;
+S.bfa=0;let last=0,lblT=0;
+function resize(){
+  S.dpr=Math.min(window.devicePixelRatio||1,coarse?1.5:2);
+  S.W=cv.width=Math.max(2,Math.round(innerWidth*S.dpr));
+  S.H=cv.height=Math.max(2,Math.round(innerHeight*S.dpr));
+  S.tc=[];S.cur=-2;buildPool();
+}
+let rt;addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(resize,150)});
+addEventListener("orientationchange",()=>setTimeout(resize,250));
 function loop(ts){
   requestAnimationFrame(loop);
-  const iv=1000/S.fps;if(ts-last<iv-2)return;
-  const dt=ts-last;last=ts;
-  if(S.running&&!S.hasAudio)S.preview+=Math.min(dt,100)/1000;
+  if(ts-last<1000/S.fps-2)return;
+  const dt=Math.min(ts-last,100)/1000;last=ts;
+  if(S.running&&!S.hasAudio)S.preview+=dt;
+  S.bfa=Math.min(1,S.bfa+dt*.4);
   ctx.globalAlpha=1;ctx.globalCompositeOperation="source-over";ctx.fillStyle="#000";ctx.fillRect(0,0,S.W,S.H);
   const t=curT();
-  if(ts-lblT>250){lblT=ts;$("#tm").textContent="زمان فعلی: "+t.toFixed(1)+" ثانیه";}
-  if(!S.img)return;
-  let P=1;
-  if(!$("#full").checked){
-    const pe=parseFloat($("#pEnd").value)||0;
-    const end=pe>0?pe:(isFinite(audio.duration)&&audio.duration>0&&S.hasAudio?audio.duration*.85:40);
-    P=clamp(t/end,0,1);
-  }
-  drawPortrait(P,ts);
+  if(ts-lblT>250){lblT=ts;$("#tm").textContent="زمان فعلی: "+t.toFixed(1)+" ثانیه"}
+  drawEmbers(ts*.001,dt);
+  for(const b of S.B)drawB(b,ts*.001);
   drawText(t,ts);
 }
 
@@ -272,26 +281,18 @@ $("#bRe").onclick=()=>{seek(0);S.cur=-2;play()};
 $("#gear").onclick=()=>panel.classList.toggle("hide");
 ["play","pause","ended","seeked"].forEach(ev=>audio.addEventListener(ev,upd));
 cv.addEventListener("click",()=>panel.classList.add("hide"));
-
-$("#fImg").onchange=e=>{
-  const f=e.target.files[0];if(!f)return;
-  const url=URL.createObjectURL(f),im=new Image();
-  im.onload=()=>{S.img=im;$("#hint").style.display="none";buildPortrait();setTimeout(()=>URL.revokeObjectURL(url),2000)};
-  im.onerror=()=>alert("این عکس باز نشد. لطفاً فایل دیگری انتخاب کنید.");
-  im.src=url;
-};
 $("#fAud").onchange=e=>{
   const f=e.target.files[0];if(!f)return;
   if(S.hasAudio)URL.revokeObjectURL(audio.src);
   audio.src=URL.createObjectURL(f);S.hasAudio=true;S.running=false;audio.load();upd();
 };
-$("#nP").oninput=e=>$("#vP").textContent=e.target.value;
-$("#nP").onchange=()=>buildPortrait();
 $("#nT").oninput=e=>$("#vT").textContent=e.target.value;
 $("#nT").onchange=()=>{buildPool();S.tc=[];S.cur=-2};
+$("#nB").oninput=e=>$("#vB").textContent=e.target.value;
+$("#nB").onchange=buildButterflies;
 $("#fps").onchange=e=>S.fps=+e.target.value;
 
-buildRows();resize();upd();requestAnimationFrame(loop);
+buildRows();buildButterflies();buildEmbers();resize();upd();requestAnimationFrame(loop);
 })();
 </script>
 </body>
