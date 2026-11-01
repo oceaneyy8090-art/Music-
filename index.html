@@ -1,265 +1,267 @@
+
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Hayedeh | Silver Memories</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hayedeh | Particle Memories</title>
+
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#080207}
-canvas{display:block;width:100%;height:100%}
+body{
+  margin:0;
+  overflow:hidden;
+  background:#080308;
+  color:white;
+  font-family:Tahoma,sans-serif;
+}
+canvas{
+  position:fixed;
+  inset:0;
+  width:100%;
+  height:100%;
+}
+#panel{
+  position:fixed;
+  z-index:5;
+  top:15px;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+button,.filelabel{
+  background:#5b102d;
+  border:1px solid #ff719d;
+  color:#fff;
+  padding:10px 14px;
+  border-radius:20px;
+  font-size:12px;
+  cursor:pointer;
+}
+input{display:none}
 #hint{
- position:fixed;bottom:18px;left:0;right:0;text-align:center;
- color:#ff8eae;font:13px Tahoma;opacity:.8;pointer-events:none
+  position:fixed;
+  bottom:15px;
+  width:100%;
+  text-align:center;
+  color:#ff9bb9;
+  font-size:11px;
+  opacity:.7;
 }
 </style>
 </head>
+
 <body>
-<canvas id="c"></canvas>
-<div id="hint">برای شروع، صفحه را لمس کن</div>
+
+<canvas id="canvas"></canvas>
+
+<div id="panel">
+  <label class="filelabel" for="photo">انتخاب عکس هایده</label>
+  <input id="photo" type="file" accept="image/*">
+  <button id="start">شروع انیمیشن</button>
+</div>
+
+<div id="hint">A memory made of particles ♥</div>
 
 <script>
-// عکس قبلی بانو هایده را در این قسمت نگه دار.
-// رشته Base64 عکس قبلی را جایگزین متن زیر کن.
-const PHOTO = "data:image/jpeg;base64,BASE64_عکس_قبلی";
+const canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d");
 
-const LYRICS = [
- "قسم خوردم تا بعد از این",
- "عاشق نشم",
- "حالا که آمد دیگری",
- "من میروم من میروم",
- "خدا حافظ",
- "خدا حافظ",
- "حالا که دست دیگری",
- "برهم زده دنیای ما",
- "حالا که برهم می خورد",
- "آرامش فردای ما",
- "خدا حافظ",
- "خدا حافظ"
+let W,H,dpr;
+let portrait=[];
+let textParticles=[];
+let photoReady=false;
+let started=false;
+let startTime=0;
+let image=new Image();
+
+const lyrics=[
+"قسم خوردم تا بعد از این",
+"عاشق نشم",
+"حالا که آمد دیگری",
+"من میروم من میروم",
+"خدا حافظ",
+"خدا حافظ",
+"حالا که دست دیگری",
+"برهم زده دنیای ما",
+"حالا که برهم می خورد",
+"آرامش فردای ما",
+"خدا حافظ",
+"خدا حافظ"
 ];
 
-const canvas=document.getElementById("c");
-const ctx=canvas.getContext("2d");
-const hint=document.getElementById("hint");
-const img=new Image();
-img.src=PHOTO;
-
-let W,H,dpr,portrait=[],letters=[];
-let lineIndex=0,lineStart=0,animationStart=0;
-let started=false;
-
-const PHOTO_COUNT=6500;
-const TEXT_COUNT=1800;
-
 function resize(){
- dpr=Math.min(devicePixelRatio||1,2);
- W=innerWidth;H=innerHeight;
- canvas.width=W*dpr;
- canvas.height=H*dpr;
- ctx.setTransform(dpr,0,0,dpr,0,0);
+  W=innerWidth;
+  H=innerHeight;
+  dpr=Math.min(devicePixelRatio||1,1);
+  canvas.width=W*dpr;
+  canvas.height=H*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  if(photoReady) makePortrait();
 }
+addEventListener("resize",resize);
+resize();
 
-addEventListener("resize",()=>{
- resize();
- if(started){
-  buildPortrait();
-  buildText(LYRICS[lineIndex]);
- }
+document.getElementById("photo").addEventListener("change",e=>{
+  const file=e.target.files[0];
+  if(!file)return;
+  const url=URL.createObjectURL(file);
+  image.onload=()=>{
+    photoReady=true;
+    makePortrait();
+    URL.revokeObjectURL(url);
+  };
+  image.src=url;
 });
 
-function edgePoint(){
- const side=Math.floor(Math.random()*4);
- if(side===0)return {x:Math.random()*W,y:-30};
- if(side===1)return {x:W+30,y:Math.random()*H};
- if(side===2)return {x:Math.random()*W,y:H+30};
- return {x:-30,y:Math.random()*H};
-}
+function makePortrait(){
+  portrait=[];
+  const off=document.createElement("canvas");
+  const o=off.getContext("2d");
 
-function ease(t){
- return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
-}
+  const maxW=Math.min(W*.78,430);
+  const maxH=H*.65;
+  const scale=Math.min(maxW/image.width,maxH/image.height);
+  const iw=image.width*scale;
+  const ih=image.height*scale;
 
-// عکس با نسبت اصلی خودش، بدون قاب مربعی
-function buildPortrait(){
- const temp=document.createElement("canvas");
- const t=temp.getContext("2d",{willReadFrequently:true});
+  off.width=Math.max(1,Math.floor(iw));
+  off.height=Math.max(1,Math.floor(ih));
 
- const scale=Math.min(W*.9/img.naturalWidth,H*.72/img.naturalHeight);
- const iw=Math.floor(img.naturalWidth*scale);
- const ih=Math.floor(img.naturalHeight*scale);
+  o.drawImage(image,0,0,off.width,off.height);
+  const data=o.getImageData(0,0,off.width,off.height).data;
 
- temp.width=iw;
- temp.height=ih;
- t.drawImage(img,0,0,iw,ih);
+  const ox=(W-iw)/2;
+  const oy=(H-ih)/2-25;
 
- const data=t.getImageData(0,0,iw,ih).data;
- const points=[];
+  for(let y=0;y<off.height;y+=3){
+    for(let x=0;x<off.width;x+=3){
+      const i=(y*off.width+x)*4;
+      if(data[i+3]<80)continue;
 
- const ox=(W-iw)/2;
- const oy=(H-ih)/2;
-
- for(let y=0;y<ih;y+=2){
-  for(let x=0;x<iw;x+=2){
-   const k=(y*iw+x)*4;
-   const r=data[k],g=data[k+1],b=data[k+2];
-   if(r+g+b<25)continue;
-   points.push({
-    x:ox+x,y:oy+y,
-    color:`rgb(${r},${g},${b})`
-   });
+      portrait.push({
+        x:ox+x,
+        y:oy+y,
+        color:`rgb(${data[i]},${data[i+1]},${data[i+2]})`,
+        sx:Math.random()*W,
+        sy:Math.random()*H,
+        delay:Math.random()*5000,
+        size:Math.random()*1.2+.5
+      });
+    }
   }
- }
-
- portrait=Array.from({length:PHOTO_COUNT},(_,i)=>{
-  const target=points[Math.floor(i*points.length/PHOTO_COUNT)]||{
-   x:W/2,y:H/2,color:"#fff"
-  };
-  const start=edgePoint();
-
-  return {
-   x:start.x,y:start.y,
-   sx:start.x,sy:start.y,
-   tx:target.x,ty:target.y,
-   color:target.color,
-   delay:Math.random()*.85,
-   size:Math.random()*1.1+.7,
-   curveX:(Math.random()-.5)*35,
-   curveY:(Math.random()-.5)*35
-  };
- });
 }
 
-// ساخت حروف فارسی از ذرات
-function buildText(text){
- const temp=document.createElement("canvas");
- temp.width=Math.floor(W);
- temp.height=Math.floor(H);
- const t=temp.getContext("2d",{willReadFrequently:true});
+function makeText(text){
+  textParticles=[];
+  const off=document.createElement("canvas");
+  const o=off.getContext("2d");
 
- const fontSize=Math.min(W/8,H*.09,58);
- t.font=`bold ${fontSize}px Tahoma,Arial`;
- t.fillStyle="#fff";
- t.textAlign="center";
- t.textBaseline="middle";
- t.direction="rtl";
- t.fillText(text,W/2,H*.83);
+  off.width=Math.min(W*.9,700);
+  off.height=110;
 
- const data=t.getImageData(0,0,W,H).data;
- const points=[];
+  o.direction="rtl";
+  o.textAlign="center";
+  o.textBaseline="middle";
+  o.font="bold  thirtypx Tahoma";
+  o.font="bold 30px Tahoma";
+  o.fillStyle="white";
+  o.fillText(text,off.width/2,55);
 
- for(let y=0;y<H;y+=3){
-  for(let x=0;x<W;x+=3){
-   if(data[(y*W+x)*4+3]>100)points.push({x,y});
+  const data=o.getImageData(0,0,off.width,off.height).data;
+  const ox=(W-off.width)/2;
+  const oy=H*.77-55;
+
+  for(let y=0;y<off.height;y+=3){
+    for(let x=0;x<off.width;x+=3){
+      const i=(y*off.width+x)*4;
+      if(data[i+3]>100){
+        textParticles.push({
+          x:ox+x,y:oy+y,
+          sx:Math.random()*W,
+          sy:Math.random()*H,
+          delay:Math.random()*500,
+          size:Math.random()*1.5+.7
+        });
+      }
+    }
   }
- }
-
- letters=Array.from({length:TEXT_COUNT},(_,i)=>{
-  const target=points[Math.floor(i*points.length/TEXT_COUNT)]||{
-   x:W/2,y:H*.83
-  };
-  const start=edgePoint();
-
-  return {
-   x:start.x,y:start.y,
-   sx:start.x,sy:start.y,
-   tx:target.x,ty:target.y,
-   size:Math.random()*1.2+1,
-   delay:Math.random()*.25,
-   curveX:(Math.random()-.5)*25,
-   curveY:(Math.random()-.5)*25,
-   color:Math.random()>.5?"#ff315f":"#ff9abb"
-  };
- });
 }
 
-function begin(){
- if(started||!img.complete||!img.naturalWidth)return;
- started=true;
- hint.style.display="none";
- buildPortrait();
- buildText(LYRICS[0]);
- animationStart=performance.now();
- lineStart=animationStart;
- requestAnimationFrame(draw);
+function drawPortrait(t){
+  if(!photoReady)return;
+
+  for(const p of portrait){
+    const progress=Math.max(0,Math.min(1,(t-p.delay)/6500));
+    const ease=1-Math.pow(1-progress,3);
+
+    const x=p.sx+(p.x-p.sx)*ease;
+    const y=p.sy+(p.y-p.sy)*ease;
+
+    ctx.globalAlpha=.2+ease*.8;
+    ctx.fillStyle=p.color;
+    ctx.beginPath();
+    ctx.arc(x,y,p.size,0,Math.PI*2);
+    ctx.fill();
+  }
+  ctx.globalAlpha=1;
 }
 
-function draw(now){
- ctx.fillStyle="#080207";
- ctx.fillRect(0,0,W,H);
+function drawText(t){
+  const lineDuration=4300;
+  const index=Math.floor(t/lineDuration);
+  if(index>=lyrics.length)return;
 
- // تصویر بانو هایده آرام‌آرام شکل می‌گیرد
- const portraitProgress=Math.min(1,(now-animationStart)/85000);
+  const local=t%lineDuration;
+  const appear=Math.min(1,local/900);
+  const disappear=local>3200?Math.max(0,1-(local-3200)/800):1;
+  const alpha=appear*disappear;
 
- for(const p of portrait){
-  const raw=Math.max(0,Math.min(1,
-   (portraitProgress-p.delay*.35)/(1-p.delay*.35)
-  ));
-  const e=ease(raw);
-  const bend=Math.sin(Math.PI*e);
-
-  p.x=p.sx+(p.tx-p.sx)*e+p.curveX*bend;
-  p.y=p.sy+(p.ty-p.sy)*e+p.curveY*bend;
-
-  ctx.globalAlpha=.95;
-  ctx.fillStyle=p.color;
-  ctx.beginPath();
-  ctx.arc(p.x,p.y,p.size,0,Math.PI*2);
-  ctx.fill();
- }
-
- // شعر روی تصویر
- const elapsed=(now-lineStart)/1000;
- const appear=3.5;
- const hold=2.5;
- const vanish=1.5;
-
- for(const p of letters){
-  let progress;
-
-  if(elapsed<appear){
-   progress=Math.max(0,Math.min(1,
-    (elapsed/appear-p.delay)/(1-p.delay)
-   ));
-  }else if(elapsed<appear+hold){
-   progress=1;
-  }else{
-   progress=Math.max(0,1-(elapsed-appear-hold)/vanish);
+  if(drawText.current!==index){
+    makeText(lyrics[index]);
+    drawText.current=index;
   }
 
-  const e=ease(progress);
-  const bend=Math.sin(Math.PI*e);
+  for(const p of textParticles){
+    const x=p.sx+(p.x-p.sx)*Math.min(1,local/650);
+    const y=p.sy+(p.y-p.sy)*Math.min(1,local/650);
 
-  p.x=p.sx+(p.tx-p.sx)*e+p.curveX*bend;
-  p.y=p.sy+(p.ty-p.sy)*e+p.curveY*bend;
-
-  ctx.globalAlpha=progress;
-  ctx.fillStyle=p.color;
-  ctx.shadowColor=p.color;
-  ctx.shadowBlur=9;
-  ctx.beginPath();
-  ctx.arc(p.x,p.y,p.size,0,Math.PI*2);
-  ctx.fill();
-  ctx.shadowBlur=0;
- }
-
- ctx.globalAlpha=1;
-
- if(elapsed>appear+hold+vanish){
-  lineIndex=(lineIndex+1)%LYRICS.length;
-  buildText(LYRICS[lineIndex]);
-  lineStart=now;
- }
-
- requestAnimationFrame(draw);
+    ctx.globalAlpha=alpha;
+    ctx.fillStyle=Math.random()>.5?"#ff477e":"#ffabc5";
+    ctx.beginPath();
+    ctx.arc(x,y,p.size,0,Math.PI*2);
+    ctx.fill();
+  }
+  ctx.globalAlpha=1;
 }
+drawText.current=-1;
 
-canvas.addEventListener("click",begin);
-canvas.addEventListener("touchstart",begin,{passive:true});
+function animate(now){
+  requestAnimationFrame(animate);
+  if(!started)return;
 
-resize();
-img.onload=()=>begin();
-img.onerror=()=>{
- hint.textContent="عکس بارگذاری نشد؛ کد Base64 را بررسی کن";
+  const t=now-startTime;
+  ctx.clearRect(0,0,W,H);
+
+  drawPortrait(t);
+  drawText(t);
+
+  if(t>lyrics.length*4300){
+    started=false;
+  }
+}
+requestAnimationFrame(animate);
+
+document.getElementById("start").onclick=()=>{
+  if(!photoReady){
+    alert("اول عکس هایده رو انتخاب کن");
+    return;
+  }
+  started=true;
+  startTime=performance.now();
+  drawText.current=-1;
 };
 </script>
 </body>
