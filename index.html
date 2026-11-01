@@ -4,19 +4,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>خداحافظ | Ocean Gaze</title>
+<title>Goodbye — Ocean Gaze</title>
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700&display=swap');
 
-* { box-sizing: border-box; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  margin: 0;
+  background: #030914;
   overflow: hidden;
   height: 100vh;
-  background: #030914;
-  color: white;
   font-family: Vazirmatn, Tahoma, sans-serif;
 }
 
@@ -27,283 +25,288 @@ canvas {
   height: 100%;
 }
 
-.background {
+.glow {
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse at 50% 45%, #19324a88, transparent 55%),
-    radial-gradient(ellipse at 50% 100%, #102c43, transparent 60%);
-  animation: breathe 7s ease-in-out infinite alternate;
+    radial-gradient(ellipse at center, #17304c88, transparent 65%),
+    radial-gradient(ellipse at bottom, #10243d, transparent 65%);
+  pointer-events: none;
 }
 
-@keyframes breathe {
-  from { transform: scale(1); opacity: .7; }
-  to { transform: scale(1.12); opacity: 1; }
-}
-
-.scene {
-  position: relative;
-  z-index: 2;
-  width: 100%;
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 25px;
-}
-
-.line {
-  position: absolute;
-  width: min(90%, 850px);
-  text-align: center;
-  font-size: clamp(22px, 5vw, 39px);
-  font-weight: 300;
-  line-height: 2.2;
-  letter-spacing: .3px;
-  opacity: 0;
-  filter: blur(15px);
-  transform: translateY(30px) scale(.96);
-  transition:
-    opacity 1.6s ease,
-    filter 1.6s ease,
-    transform 1.6s cubic-bezier(.2,.8,.2,1);
-  text-shadow:
-    0 0 15px #a8cfff88,
-    0 0 45px #4a8acb55;
-}
-
-.line.visible {
-  opacity: 1;
-  filter: blur(0);
-  transform: translateY(0) scale(1);
-}
-
-.line.leaving {
-  opacity: 0;
-  filter: blur(16px);
-  transform: translateY(-35px) scale(1.05);
-}
-
-.word {
-  display: inline-block;
-  opacity: 0;
-  transform: translateY(12px);
-  filter: blur(7px);
-  transition: .7s ease;
-}
-
-.word.reveal {
-  opacity: 1;
-  transform: translateY(0);
-  filter: blur(0);
-}
-
-.final {
-  font-size: clamp(45px, 12vw, 95px);
-  font-weight: 500;
-  color: #e4efff;
-  letter-spacing: 5px;
-  text-shadow:
-    0 0 10px white,
-    0 0 30px #9acbff,
-    0 0 75px #327ac9,
-    0 0 130px #1b4e91;
-  animation: finalGlow 3s ease-in-out infinite alternate;
-}
-
-@keyframes finalGlow {
-  from { text-shadow: 0 0 10px white, 0 0 30px #9acbff; }
-  to { text-shadow: 0 0 25px white, 0 0 80px #478de0, 0 0 130px #1b4e91; }
-}
-
-.caption {
+.brand {
   position: fixed;
-  z-index: 3;
-  bottom: 32px;
+  bottom: 28px;
   width: 100%;
   text-align: center;
+  color: #7896b7;
   font-size: 10px;
   letter-spacing: 7px;
-  color: #8ca9c4;
-  opacity: .65;
+  opacity: .6;
+  z-index: 2;
 }
 
-.progress {
+.hint {
   position: fixed;
-  z-index: 4;
-  bottom: 0;
-  right: 0;
-  height: 2px;
-  width: 0;
-  background: linear-gradient(90deg, #497fb4, #d7edff);
-  box-shadow: 0 0 12px #9bcfff;
+  top: 25px;
+  width: 100%;
+  text-align: center;
+  color: #647f9e;
+  font-size: 10px;
+  letter-spacing: 3px;
+  z-index: 2;
 }
 </style>
 </head>
 
 <body>
-
-<div class="background"></div>
+<div class="glow"></div>
 <canvas id="canvas"></canvas>
-
-<div class="scene">
-  <div id="line" class="line"></div>
-</div>
-
-<div class="caption">O C E A N   G A Z E</div>
-<div class="progress" id="progress"></div>
+<div class="hint">A STORY WRITTEN IN LIGHT</div>
+<div class="brand">O C E A N   G A Z E</div>
 
 <script>
-const lyrics = [
-  "خوردم قسم تا بعد از این با چشم باز عاشق شوم",
-  "حالا که آمد دیگری من می‌روم، من می‌روم",
-  "خداحافظ",
-  "خداحافظ",
-  "حالا که دست دیگری برهم زده دنیای ما",
-  "حالا که برهم می‌خورد آرامش فردای ما",
-  "خداحافظ",
-  "خداحافظ"
-];
-
-const line = document.getElementById("line");
-const progress = document.getElementById("progress");
-
-let current = 0;
-let wordTimers = [];
-
-function clearTimers() {
-  wordTimers.forEach(clearTimeout);
-  wordTimers = [];
-}
-
-function showLine() {
-  clearTimers();
-  line.className = "line";
-  line.innerHTML = "";
-
-  if (current >= lyrics.length) {
-    line.textContent = "خداحافظ";
-    line.classList.add("final", "visible");
-    progress.style.width = "100%";
-    return;
-  }
-
-  const text = lyrics[current];
-  const words = text.split(" ");
-
-  if (text === "خداحافظ") {
-    line.classList.add("final");
-  }
-
-  words.forEach((word, i) => {
-    const span = document.createElement("span");
-    span.className = "word";
-    span.textContent = word + " ";
-    line.appendChild(span);
-
-    wordTimers.push(setTimeout(() => {
-      span.classList.add("reveal");
-    }, 350 + i * 180));
-  });
-
-  requestAnimationFrame(() => {
-    line.classList.add("visible");
-  });
-
-  const duration = Math.max(4500, words.length * 650 + 2500);
-  progress.style.transition = "none";
-  progress.style.width = (current / lyrics.length * 100) + "%";
-
-  setTimeout(() => {
-    line.classList.remove("visible");
-    line.classList.add("leaving");
-
-    setTimeout(() => {
-      current++;
-      showLine();
-    }, 1600);
-  }, duration);
-}
-
-setTimeout(showLine, 1800);
-
-
-// ذرات نور
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-let width, height, particles = [];
+const lyrics = [
+  ["خوردم قسم تا بعد از این", "با چشم باز عاشق شوم"],
+  ["حالا که آمد دیگری", "من می‌روم من می‌روم"],
+  ["خداحافظ خداحافظ"],
+  ["حالا که دست دیگری", "برهم زده دنیای ما"],
+  ["حالا که برهم می‌خورد", "آرامش فردای ما"],
+  ["خداحافظ خداحافظ"]
+];
+
+let W, H, DPR;
+let particles = [];
+let targets = [];
+let slide = 0;
+let phase = "scatter";
+let timer = 0;
+let lastTime = 0;
+let finished = false;
+
+const PARTICLE_COUNT = 2600;
 
 function resize() {
-  const ratio = Math.min(devicePixelRatio || 1, 2);
-  width = innerWidth;
-  height = innerHeight;
-  canvas.width = width * ratio;
-  canvas.height = height * ratio;
-  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  DPR = Math.min(devicePixelRatio || 1, 2);
+  W = innerWidth;
+  H = innerHeight;
 
-  particles = Array.from({length: 150}, () => ({
-    x: Math.random() * width,
-    y: Math.random() * height,
-    r: Math.random() * 2 + .3,
-    speed: Math.random() * .45 + .12,
-    alpha: Math.random() * .8 + .1,
-    phase: Math.random() * 6.28,
-    drift: Math.random() * .5 - .25
-  }));
+  canvas.width = W * DPR;
+  canvas.height = H * DPR;
+  canvas.style.width = W + "px";
+  canvas.style.height = H + "px";
+
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  if (particles.length) {
+    particles.forEach(p => {
+      p.x = Math.random() * W;
+      p.y = Math.random() * H;
+    });
+    makeTargets();
+  }
 }
 
-let tick = 0;
+function createParticles() {
+  particles = [];
 
-function animate() {
-  ctx.clearRect(0, 0, width, height);
-  tick += .01;
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    particles.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      tx: W / 2,
+      ty: H / 2,
+      vx: 0,
+      vy: 0,
+      size: Math.random() * 1.5 + .5,
+      speed: Math.random() * .035 + .035,
+      phase: Math.random() * 6.28,
+      color: Math.random()
+    });
+  }
+}
 
-  particles.forEach(p => {
-    p.y -= p.speed;
-    p.x += Math.sin(tick + p.phase) * .25 + p.drift * .1;
+function makeTargets() {
+  const off = document.createElement("canvas");
+  off.width = W;
+  off.height = H;
 
-    if (p.y < -5) {
-      p.y = height + 5;
-      p.x = Math.random() * width;
+  const g = off.getContext("2d");
+  g.clearRect(0, 0, W, H);
+  g.fillStyle = "#fff";
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  g.direction = "rtl";
+
+  const lines = lyrics[slide];
+  const fontSize = Math.min(39, Math.max(22, W * .055));
+  const lineGap = fontSize * 2.1;
+  const centerY = H / 2;
+
+  g.font = `400 ${fontSize}px Vazirmatn, Tahoma, sans-serif`;
+
+  const startY = centerY - ((lines.length - 1) * lineGap) / 2;
+
+  lines.forEach((line, index) => {
+    g.fillText(line, W / 2, startY + index * lineGap);
+  });
+
+  const image = g.getImageData(0, 0, W, H).data;
+  const points = [];
+
+  const step = W < 500 ? 4 : 5;
+
+  for (let y = 0; y < H; y += step) {
+    for (let x = 0; x < W; x += step) {
+      const alpha = image[(y * W + x) * 4 + 3];
+
+      if (alpha > 100) {
+        points.push({ x, y });
+      }
     }
+  }
 
-    const glow = p.alpha * (.5 + Math.sin(tick * 2 + p.phase) * .3);
+  // پخش کردن نقاط متن میان ذرات
+  targets = [];
+
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    const point = points[i % points.length];
+    targets.push({
+      x: point.x + (Math.random() - .5) * 1.5,
+      y: point.y + (Math.random() - .5) * 1.5
+    });
+  }
+
+  // مرتب‌سازی تصادفی برای طبیعی‌تر شدن حرکت
+  for (let i = targets.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [targets[i], targets[j]] = [targets[j], targets[i]];
+  }
+
+  particles.forEach((p, i) => {
+    p.tx = targets[i].x;
+    p.ty = targets[i].y;
+  });
+}
+
+function scatter() {
+  particles.forEach(p => {
+    p.tx = Math.random() * W;
+    p.ty = Math.random() * H;
+  });
+}
+
+function nextSlide() {
+  slide++;
+
+  if (slide >= lyrics.length) {
+    finished = true;
+    return;
+  }
+
+  makeTargets();
+  phase = "gather";
+  timer = 0;
+}
+
+function drawBackground() {
+  ctx.fillStyle = "rgba(3, 9, 20, 0.28)";
+  ctx.fillRect(0, 0, W, H);
+
+  // مه نورانی مرکزی
+  const gradient = ctx.createRadialGradient(
+    W / 2, H / 2, 0,
+    W / 2, H / 2, Math.min(W, H) * .55
+  );
+
+  gradient.addColorStop(0, "rgba(35, 85, 130, .10)");
+  gradient.addColorStop(1, "rgba(3, 9, 20, 0)");
+
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawParticles(time) {
+  particles.forEach(p => {
+    const dx = p.tx - p.x;
+    const dy = p.ty - p.y;
+
+    p.x += dx * p.speed;
+    p.y += dy * p.speed;
+
+    const shimmer = .55 + Math.sin(time * .002 + p.phase) * .35;
 
     ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(177,213,255,${glow})`;
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = "#7dbaff";
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+
+    ctx.fillStyle = p.color > .8
+      ? `rgba(220,240,255,${shimmer})`
+      : `rgba(115,177,230,${shimmer})`;
+
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = "#70baff";
     ctx.fill();
   });
 
-  // موج‌های آرام
-  for (let j = 0; j < 3; j++) {
-    ctx.beginPath();
-    const base = height * (.78 + j * .055);
-
-    for (let x = 0; x <= width; x += 8) {
-      const y = base +
-        Math.sin(x * .009 + tick + j) * 9 +
-        Math.sin(x * .018 - tick * 1.5) * 4;
-
-      if (x === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-
-    ctx.strokeStyle = `rgba(91,157,211,${.10 - j * .02})`;
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  }
-
-  requestAnimationFrame(animate);
+  ctx.shadowBlur = 0;
 }
 
-resize();
-animate();
-addEventListener("resize", resize);
-</script>
+function loop(time) {
+  const dt = Math.min(40, time - (lastTime || time));
+  lastTime = time;
 
+  drawBackground();
+  drawParticles(time);
+
+  timer += dt;
+
+  if (phase === "gather" && timer > 4800) {
+    phase = "hold";
+    timer = 0;
+  }
+
+  if (phase === "hold" && timer > 3300) {
+    phase = "scatter";
+    timer = 0;
+    scatter();
+  }
+
+  if (phase === "scatter" && timer > 1800) {
+    if (slide === lyrics.length - 1) {
+      // آخرین خداحافظ برای چند لحظه باقی می‌ماند
+      phase = "final";
+      timer = 0;
+    } else {
+      nextSlide();
+    }
+  }
+
+  if (phase === "final" && timer > 9000) {
+    slide = 0;
+    finished = false;
+    makeTargets();
+    phase = "gather";
+    timer = 0;
+  }
+
+  requestAnimationFrame(loop);
+}
+
+async function start() {
+  await document.fonts.ready;
+  resize();
+  createParticles();
+  makeTargets();
+
+  phase = "gather";
+  requestAnimationFrame(loop);
+}
+
+window.addEventListener("resize", resize);
+start();
+</script>
 </body>
 </html>
