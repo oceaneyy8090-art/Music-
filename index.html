@@ -1,573 +1,266 @@
-
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Ocean Gaze — Particle Lyrics</title>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hayedeh | Silver Memories</title>
 <style>
-* { box-sizing: border-box; }
-
-html, body {
-  margin: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: #000;
-  font-family: Tahoma, sans-serif;
-}
-
-canvas {
-  display: block;
-  width: 100vw;
-  height: 100vh;
-  background: #000;
-}
-
-#label {
-  position: fixed;
-  bottom: 24px;
-  left: 0;
-  width: 100%;
-  text-align: center;
-  color: #777f99;
-  font: 10px Arial;
-  letter-spacing: 7px;
-  pointer-events: none;
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#080207}
+canvas{display:block;width:100%;height:100%}
+#hint{
+ position:fixed;bottom:18px;left:0;right:0;text-align:center;
+ color:#ff8eae;font:13px Tahoma;opacity:.8;pointer-events:none
 }
 </style>
 </head>
-
 <body>
-
 <canvas id="c"></canvas>
-<div id="label">O C E A N   G A Z E</div>
+<div id="hint">برای شروع، صفحه را لمس کن</div>
 
 <script>
+// عکس قبلی بانو هایده را در این قسمت نگه دار.
+// رشته Base64 عکس قبلی را جایگزین متن زیر کن.
+const PHOTO = "data:image/jpeg;base64,BASE64_عکس_قبلی";
 
-// ---------- تنظیمات اصلی ----------
+const LYRICS = [
+ "قسم خوردم تا بعد از این",
+ "عاشق نشم",
+ "حالا که آمد دیگری",
+ "من میروم من میروم",
+ "خدا حافظ",
+ "خدا حافظ",
+ "حالا که دست دیگری",
+ "برهم زده دنیای ما",
+ "حالا که برهم می خورد",
+ "آرامش فردای ما",
+ "خدا حافظ",
+ "خدا حافظ"
+];
 
-const W = 900, H = 900;
+const canvas=document.getElementById("c");
+const ctx=canvas.getContext("2d");
+const hint=document.getElementById("hint");
+const img=new Image();
+img.src=PHOTO;
 
-const COUNT = 4200;
-const SAMPLE = 3;
+let W,H,dpr,portrait=[],letters=[];
+let lineIndex=0,lineStart=0,animationStart=0;
+let started=false;
 
-const GATHER_FRAMES = 145;
-const HOLD_FRAMES = 115;
-const SCATTER_FRAMES = 85;
+const PHOTO_COUNT=6500;
+const TEXT_COUNT=1800;
 
-const TEXT_SIZE = 42;
-const LINE_GAP = 95;
+function resize(){
+ dpr=Math.min(devicePixelRatio||1,2);
+ W=innerWidth;H=innerHeight;
+ canvas.width=W*dpr;
+ canvas.height=H*dpr;
+ ctx.setTransform(dpr,0,0,dpr,0,0);
+}
 
-const SEED = 27;
-
-const cv = document.getElementById("c");
-const ctx = cv.getContext("2d");
-
-const off = document.createElement("canvas");
-off.width = W;
-off.height = H;
-
-const oc = off.getContext("2d", {
-  willReadFrequently: true
+addEventListener("resize",()=>{
+ resize();
+ if(started){
+  buildPortrait();
+  buildText(LYRICS[lineIndex]);
+ }
 });
 
-let particles = [];
-let targets = [];
+function edgePoint(){
+ const side=Math.floor(Math.random()*4);
+ if(side===0)return {x:Math.random()*W,y:-30};
+ if(side===1)return {x:W+30,y:Math.random()*H};
+ if(side===2)return {x:Math.random()*W,y:H+30};
+ return {x:-30,y:Math.random()*H};
+}
 
-let slide = 0;
-let frame = 0;
-let state = "gather";
-let raf;
+function ease(t){
+ return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+}
 
-const lyrics = [
-  [
-    "خوردم قسم تا بعد از این",
-    "با چشم باز عاشق شوم"
-  ],
-  [
-    "حالا که آمد دیگری",
-    "من می‌روم من می‌روم"
-  ],
-  [
-    "خداحافظ خداحافظ"
-  ],
-  [
-    "حالا که دست دیگری",
-    "برهم زده دنیای ما"
-  ],
-  [
-    "حالا که برهم می‌خورد",
-    "آرامش فردای ما"
-  ],
-  [
-    "خداحافظ خداحافظ"
-  ]
-];
+// عکس با نسبت اصلی خودش، بدون قاب مربعی
+function buildPortrait(){
+ const temp=document.createElement("canvas");
+ const t=temp.getContext("2d",{willReadFrequently:true});
 
-const COLORS = [
-  "#ffffff",
-  "#dceaff",
-  "#b8d5ff",
-  "#e8e5ff",
-  "#a9c7ed"
-];
+ const scale=Math.min(W*.9/img.naturalWidth,H*.72/img.naturalHeight);
+ const iw=Math.floor(img.naturalWidth*scale);
+ const ih=Math.floor(img.naturalHeight*scale);
 
+ temp.width=iw;
+ temp.height=ih;
+ t.drawImage(img,0,0,iw,ih);
 
-// ---------- تصادفی کنترل‌شده ----------
+ const data=t.getImageData(0,0,iw,ih).data;
+ const points=[];
 
-function mulberry(a) {
-  return function() {
-    a |= 0;
-    a = a + 0x6D2B79F5 | 0;
+ const ox=(W-iw)/2;
+ const oy=(H-ih)/2;
 
-    let t = Math.imul(a ^ a >>> 15, 1 | a);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+ for(let y=0;y<ih;y+=2){
+  for(let x=0;x<iw;x+=2){
+   const k=(y*iw+x)*4;
+   const r=data[k],g=data[k+1],b=data[k+2];
+   if(r+g+b<25)continue;
+   points.push({
+    x:ox+x,y:oy+y,
+    color:`rgb(${r},${g},${b})`
+   });
+  }
+ }
 
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+ portrait=Array.from({length:PHOTO_COUNT},(_,i)=>{
+  const target=points[Math.floor(i*points.length/PHOTO_COUNT)]||{
+   x:W/2,y:H/2,color:"#fff"
   };
+  const start=edgePoint();
+
+  return {
+   x:start.x,y:start.y,
+   sx:start.x,sy:start.y,
+   tx:target.x,ty:target.y,
+   color:target.color,
+   delay:Math.random()*.85,
+   size:Math.random()*1.1+.7,
+   curveX:(Math.random()-.5)*35,
+   curveY:(Math.random()-.5)*35
+  };
+ });
 }
 
-const rand = mulberry(SEED);
+// ساخت حروف فارسی از ذرات
+function buildText(text){
+ const temp=document.createElement("canvas");
+ temp.width=Math.floor(W);
+ temp.height=Math.floor(H);
+ const t=temp.getContext("2d",{willReadFrequently:true});
 
-function random(min, max) {
-  return min + (max - min) * rand();
+ const fontSize=Math.min(W/8,H*.09,58);
+ t.font=`bold ${fontSize}px Tahoma,Arial`;
+ t.fillStyle="#fff";
+ t.textAlign="center";
+ t.textBaseline="middle";
+ t.direction="rtl";
+ t.fillText(text,W/2,H*.83);
+
+ const data=t.getImageData(0,0,W,H).data;
+ const points=[];
+
+ for(let y=0;y<H;y+=3){
+  for(let x=0;x<W;x+=3){
+   if(data[(y*W+x)*4+3]>100)points.push({x,y});
+  }
+ }
+
+ letters=Array.from({length:TEXT_COUNT},(_,i)=>{
+  const target=points[Math.floor(i*points.length/TEXT_COUNT)]||{
+   x:W/2,y:H*.83
+  };
+  const start=edgePoint();
+
+  return {
+   x:start.x,y:start.y,
+   sx:start.x,sy:start.y,
+   tx:target.x,ty:target.y,
+   size:Math.random()*1.2+1,
+   delay:Math.random()*.25,
+   curveX:(Math.random()-.5)*25,
+   curveY:(Math.random()-.5)*25,
+   color:Math.random()>.5?"#ff315f":"#ff9abb"
+  };
+ });
 }
 
-function clamp(v, a, b) {
-  return Math.max(a, Math.min(b, v));
+function begin(){
+ if(started||!img.complete||!img.naturalWidth)return;
+ started=true;
+ hint.style.display="none";
+ buildPortrait();
+ buildText(LYRICS[0]);
+ animationStart=performance.now();
+ lineStart=animationStart;
+ requestAnimationFrame(draw);
 }
 
-function smooth(a, b, x) {
-  x = clamp((x - a) / (b - a), 0, 1);
-  return x * x * (3 - 2 * x);
+function draw(now){
+ ctx.fillStyle="#080207";
+ ctx.fillRect(0,0,W,H);
+
+ // تصویر بانو هایده آرام‌آرام شکل می‌گیرد
+ const portraitProgress=Math.min(1,(now-animationStart)/85000);
+
+ for(const p of portrait){
+  const raw=Math.max(0,Math.min(1,
+   (portraitProgress-p.delay*.35)/(1-p.delay*.35)
+  ));
+  const e=ease(raw);
+  const bend=Math.sin(Math.PI*e);
+
+  p.x=p.sx+(p.tx-p.sx)*e+p.curveX*bend;
+  p.y=p.sy+(p.ty-p.sy)*e+p.curveY*bend;
+
+  ctx.globalAlpha=.95;
+  ctx.fillStyle=p.color;
+  ctx.beginPath();
+  ctx.arc(p.x,p.y,p.size,0,Math.PI*2);
+  ctx.fill();
+ }
+
+ // شعر روی تصویر
+ const elapsed=(now-lineStart)/1000;
+ const appear=3.5;
+ const hold=2.5;
+ const vanish=1.5;
+
+ for(const p of letters){
+  let progress;
+
+  if(elapsed<appear){
+   progress=Math.max(0,Math.min(1,
+    (elapsed/appear-p.delay)/(1-p.delay)
+   ));
+  }else if(elapsed<appear+hold){
+   progress=1;
+  }else{
+   progress=Math.max(0,1-(elapsed-appear-hold)/vanish);
+  }
+
+  const e=ease(progress);
+  const bend=Math.sin(Math.PI*e);
+
+  p.x=p.sx+(p.tx-p.sx)*e+p.curveX*bend;
+  p.y=p.sy+(p.ty-p.sy)*e+p.curveY*bend;
+
+  ctx.globalAlpha=progress;
+  ctx.fillStyle=p.color;
+  ctx.shadowColor=p.color;
+  ctx.shadowBlur=9;
+  ctx.beginPath();
+  ctx.arc(p.x,p.y,p.size,0,Math.PI*2);
+  ctx.fill();
+  ctx.shadowBlur=0;
+ }
+
+ ctx.globalAlpha=1;
+
+ if(elapsed>appear+hold+vanish){
+  lineIndex=(lineIndex+1)%LYRICS.length;
+  buildText(LYRICS[lineIndex]);
+  lineStart=now;
+ }
+
+ requestAnimationFrame(draw);
 }
 
-
-// ---------- اندازه صفحه ----------
-
-let DPR = 1;
-
-function resize() {
-  DPR = Math.min(devicePixelRatio || 1, 2);
-
-  cv.width = innerWidth * DPR;
-  cv.height = innerHeight * DPR;
-
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-}
+canvas.addEventListener("click",begin);
+canvas.addEventListener("touchstart",begin,{passive:true});
 
 resize();
-addEventListener("resize", resize);
-
-
-// ---------- ساخت شکل نوشته ----------
-
-function makeTextTargets(lines) {
-
-  oc.clearRect(0, 0, W, H);
-
-  oc.fillStyle = "#fff";
-  oc.textAlign = "center";
-  oc.textBaseline = "middle";
-  oc.direction = "rtl";
-
-  const size = lines.length === 1 ? 52 : TEXT_SIZE;
-
-  oc.font = `500 ${size}px Tahoma, Arial, sans-serif`;
-
-  const centerY = H / 2;
-
-  const startY = centerY -
-    ((lines.length - 1) * LINE_GAP) / 2;
-
-  lines.forEach((txt, i) => {
-
-    let fontSize = size;
-
-    oc.font = `500 ${fontSize}px Tahoma, Arial, sans-serif`;
-
-    while (oc.measureText(txt).width > W * 0.88 && fontSize > 20) {
-      fontSize--;
-      oc.font = `500 ${fontSize}px Tahoma, Arial, sans-serif`;
-    }
-
-    oc.fillText(txt, W / 2, startY + i * LINE_GAP);
-
-  });
-
-  const data = oc.getImageData(0, 0, W, H).data;
-
-  let points = [];
-
-  for (let y = 0; y < H; y += SAMPLE) {
-    for (let x = 0; x < W; x += SAMPLE) {
-
-      const alpha = data[(y * W + x) * 4 + 3];
-
-      if (alpha > 100) {
-        points.push({
-          x: x + random(-0.6, 0.6),
-          y: y + random(-0.6, 0.6)
-        });
-      }
-
-    }
-  }
-
-  if (!points.length) {
-    console.error("No text pixels found.");
-    return false;
-  }
-
-  // پخش یکنواخت ذرات روی حروف
-
-  targets = [];
-
-  for (let i = 0; i < COUNT; i++) {
-
-    const p = points[Math.floor(i * points.length / COUNT)];
-
-    targets.push({
-      x: p.x,
-      y: p.y
-    });
-
-  }
-
-  return true;
-}
-
-
-// ---------- ساخت ذرات ----------
-
-function createParticles() {
-
-  particles = [];
-
-  for (let i = 0; i < COUNT; i++) {
-
-    const angle = random(0, Math.PI * 2);
-    const radius = random(200, 650);
-
-    particles.push({
-
-      x: W / 2 + Math.cos(angle) * radius,
-      y: H / 2 + Math.sin(angle) * radius,
-
-      sx: 0,
-      sy: 0,
-
-      tx: 0,
-      ty: 0,
-
-      vx: 0,
-      vy: 0,
-
-      size: random(0.65, 1.8),
-
-      speed: random(0.055, 0.105),
-
-      angle: angle,
-
-      swirl: random(0.7, 1.6),
-
-      phase: random(0, 6.28),
-
-      color: COLORS[Math.floor(rand() * COLORS.length)],
-
-      sparkle: rand() > 0.87
-
-    });
-
-  }
-
-}
-
-
-// ---------- تعیین مقصد ذرات ----------
-
-function assignTargets() {
-
-  if (!makeTextTargets(lyrics[slide])) return;
-
-  particles.forEach((p, i) => {
-
-    const target = targets[i];
-
-    p.sx = p.x;
-    p.sy = p.y;
-
-    p.tx = target.x;
-    p.ty = target.y;
-
-    // جهت مارپیچی حرکت
-
-    p.angle = Math.atan2(
-      p.sy - p.ty,
-      p.sx - p.tx
-    );
-
-  });
-
-}
-
-
-// ---------- پخش شدن ذرات ----------
-
-function scatter() {
-
-  particles.forEach(p => {
-
-    const angle = random(0, Math.PI * 2);
-    const distance = random(300, 850);
-
-    p.sx = p.x;
-    p.sy = p.y;
-
-    p.tx = W / 2 + Math.cos(angle) * distance;
-    p.ty = H / 2 + Math.sin(angle) * distance;
-
-    p.tx = clamp(p.tx, -100, W + 100);
-    p.ty = clamp(p.ty, -100, H + 100);
-
-    p.angle = angle;
-
-  });
-
-}
-
-
-// ---------- حرکت مارپیچی ----------
-
-function moveGather(p, progress, time) {
-
-  const dx = p.tx - p.sx;
-  const dy = p.ty - p.sy;
-
-  const ease = smooth(0, 1, progress);
-
-  // مسیر منحنی و مارپیچی
-
-  const curve = Math.sin(progress * Math.PI) *
-                p.swirl * 45;
-
-  const cx = Math.cos(p.angle + progress * 5) * curve;
-  const cy = Math.sin(p.angle + progress * 5) * curve;
-
-  const wave = Math.sin(time * 0.04 + p.phase) *
-               2 * (1 - ease);
-
-  const x = p.sx + dx * ease + cx + wave;
-  const y = p.sy + dy * ease + cy;
-
-  p.x += (x - p.x) * p.speed;
-  p.y += (y - p.y) * p.speed;
-
-}
-
-
-// ---------- حرکت انفجاری ----------
-
-function moveScatter(p, progress) {
-
-  const ease = smooth(0, 1, progress);
-
-  const dx = p.tx - p.sx;
-  const dy = p.ty - p.sy;
-
-  const curl = Math.sin(progress * Math.PI) * 65;
-
-  const x = p.sx + dx * ease +
-    Math.cos(p.angle + progress * 7) * curl;
-
-  const y = p.sy + dy * ease +
-    Math.sin(p.angle + progress * 7) * curl;
-
-  p.x += (x - p.x) * 0.12;
-  p.y += (y - p.y) * 0.12;
-
-}
-
-
-// ---------- درخشش و رسم ذرات ----------
-
-function drawParticles(time) {
-
-  ctx.clearRect(0, 0, innerWidth, innerHeight);
-
-  const scale = Math.min(
-    innerWidth / W,
-    innerHeight / H
-  );
-
-  const offsetX = (innerWidth - W * scale) / 2;
-  const offsetY = (innerHeight - H * scale) / 2;
-
-  ctx.save();
-
-  ctx.translate(offsetX, offsetY);
-  ctx.scale(scale, scale);
-
-  // هاله نور مرکزی
-
-  const glow = ctx.createRadialGradient(
-    W / 2, H / 2, 5,
-    W / 2, H / 2, 390
-  );
-
-  glow.addColorStop(0, "rgba(80,130,200,0.10)");
-  glow.addColorStop(1, "rgba(0,0,0,0)");
-
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, W, H);
-
-  particles.forEach(p => {
-
-    let twinkle = 0.55 +
-      Math.sin(time * 0.055 + p.phase) * 0.35;
-
-    const size = p.size *
-      (p.sparkle ? 1 + Math.max(0, twinkle) : 1);
-
-    ctx.globalAlpha = clamp(twinkle, 0.12, 1);
-
-    ctx.fillStyle = p.color;
-
-    ctx.shadowBlur = p.sparkle ? 13 : 7;
-    ctx.shadowColor = "#a6ccff";
-
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
-    ctx.fill();
-
-    // درخشش چهارپر روی بعضی ذرات
-
-    if (p.sparkle && twinkle > 0.65) {
-
-      const z = size * 2.5;
-
-      ctx.globalAlpha = (twinkle - 0.5) * 0.8;
-
-      ctx.fillRect(p.x - z, p.y - 0.35, z * 2, 0.7);
-      ctx.fillRect(p.x - 0.35, p.y - z, 0.7, z * 2);
-
-    }
-
-  });
-
-  ctx.globalAlpha = 1;
-  ctx.shadowBlur = 0;
-
-  ctx.restore();
-
-}
-
-
-// ---------- کنترل مراحل ----------
-
-function nextSlide() {
-
-  slide++;
-
-  if (slide >= lyrics.length) {
-    slide = 0;
-  }
-
-  assignTargets();
-
-  state = "gather";
-  frame = 0;
-
-}
-
-
-function animate(time) {
-
-  if (state === "gather") {
-
-    const progress = clamp(frame / GATHER_FRAMES, 0, 1);
-
-    particles.forEach(p => {
-      moveGather(p, progress, time);
-    });
-
-    if (frame >= GATHER_FRAMES) {
-      state = "hold";
-      frame = 0;
-    }
-
-  }
-
-  else if (state === "hold") {
-
-    // ذرات در جای خود می‌درخشند
-
-    particles.forEach(p => {
-
-      p.x += (p.tx - p.x) * 0.08;
-      p.y += (p.ty - p.y) * 0.08;
-
-    });
-
-    if (frame >= HOLD_FRAMES) {
-
-      state = "scatter";
-      frame = 0;
-
-      scatter();
-
-    }
-
-  }
-
-  else if (state === "scatter") {
-
-    const progress = clamp(frame / SCATTER_FRAMES, 0, 1);
-
-    particles.forEach(p => {
-      moveScatter(p, progress);
-    });
-
-    if (frame >= SCATTER_FRAMES) {
-      nextSlide();
-    }
-
-  }
-
-  drawParticles(time);
-
-  frame++;
-
-  raf = requestAnimationFrame(animate);
-
-}
-
-
-// ---------- شروع ----------
-
-async function start() {
-
-  if (document.fonts && document.fonts.ready) {
-    await document.fonts.ready;
-  }
-
-  resize();
-
-  createParticles();
-
-  assignTargets();
-
-  state = "gather";
-  frame = 0;
-
-  requestAnimationFrame(animate);
-
-}
-
-start();
-
+img.onload=()=>begin();
+img.onerror=()=>{
+ hint.textContent="عکس بارگذاری نشد؛ کد Base64 را بررسی کن";
+};
 </script>
 </body>
 </html>
