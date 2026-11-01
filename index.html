@@ -1,0 +1,309 @@
+
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>خداحافظ | Ocean Gaze</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700&display=swap');
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  overflow: hidden;
+  height: 100vh;
+  background: #030914;
+  color: white;
+  font-family: Vazirmatn, Tahoma, sans-serif;
+}
+
+canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.background {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 45%, #19324a88, transparent 55%),
+    radial-gradient(ellipse at 50% 100%, #102c43, transparent 60%);
+  animation: breathe 7s ease-in-out infinite alternate;
+}
+
+@keyframes breathe {
+  from { transform: scale(1); opacity: .7; }
+  to { transform: scale(1.12); opacity: 1; }
+}
+
+.scene {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 25px;
+}
+
+.line {
+  position: absolute;
+  width: min(90%, 850px);
+  text-align: center;
+  font-size: clamp(22px, 5vw, 39px);
+  font-weight: 300;
+  line-height: 2.2;
+  letter-spacing: .3px;
+  opacity: 0;
+  filter: blur(15px);
+  transform: translateY(30px) scale(.96);
+  transition:
+    opacity 1.6s ease,
+    filter 1.6s ease,
+    transform 1.6s cubic-bezier(.2,.8,.2,1);
+  text-shadow:
+    0 0 15px #a8cfff88,
+    0 0 45px #4a8acb55;
+}
+
+.line.visible {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0) scale(1);
+}
+
+.line.leaving {
+  opacity: 0;
+  filter: blur(16px);
+  transform: translateY(-35px) scale(1.05);
+}
+
+.word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(12px);
+  filter: blur(7px);
+  transition: .7s ease;
+}
+
+.word.reveal {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+
+.final {
+  font-size: clamp(45px, 12vw, 95px);
+  font-weight: 500;
+  color: #e4efff;
+  letter-spacing: 5px;
+  text-shadow:
+    0 0 10px white,
+    0 0 30px #9acbff,
+    0 0 75px #327ac9,
+    0 0 130px #1b4e91;
+  animation: finalGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes finalGlow {
+  from { text-shadow: 0 0 10px white, 0 0 30px #9acbff; }
+  to { text-shadow: 0 0 25px white, 0 0 80px #478de0, 0 0 130px #1b4e91; }
+}
+
+.caption {
+  position: fixed;
+  z-index: 3;
+  bottom: 32px;
+  width: 100%;
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: 7px;
+  color: #8ca9c4;
+  opacity: .65;
+}
+
+.progress {
+  position: fixed;
+  z-index: 4;
+  bottom: 0;
+  right: 0;
+  height: 2px;
+  width: 0;
+  background: linear-gradient(90deg, #497fb4, #d7edff);
+  box-shadow: 0 0 12px #9bcfff;
+}
+</style>
+</head>
+
+<body>
+
+<div class="background"></div>
+<canvas id="canvas"></canvas>
+
+<div class="scene">
+  <div id="line" class="line"></div>
+</div>
+
+<div class="caption">O C E A N   G A Z E</div>
+<div class="progress" id="progress"></div>
+
+<script>
+const lyrics = [
+  "خوردم قسم تا بعد از این با چشم باز عاشق شوم",
+  "حالا که آمد دیگری من می‌روم، من می‌روم",
+  "خداحافظ",
+  "خداحافظ",
+  "حالا که دست دیگری برهم زده دنیای ما",
+  "حالا که برهم می‌خورد آرامش فردای ما",
+  "خداحافظ",
+  "خداحافظ"
+];
+
+const line = document.getElementById("line");
+const progress = document.getElementById("progress");
+
+let current = 0;
+let wordTimers = [];
+
+function clearTimers() {
+  wordTimers.forEach(clearTimeout);
+  wordTimers = [];
+}
+
+function showLine() {
+  clearTimers();
+  line.className = "line";
+  line.innerHTML = "";
+
+  if (current >= lyrics.length) {
+    line.textContent = "خداحافظ";
+    line.classList.add("final", "visible");
+    progress.style.width = "100%";
+    return;
+  }
+
+  const text = lyrics[current];
+  const words = text.split(" ");
+
+  if (text === "خداحافظ") {
+    line.classList.add("final");
+  }
+
+  words.forEach((word, i) => {
+    const span = document.createElement("span");
+    span.className = "word";
+    span.textContent = word + " ";
+    line.appendChild(span);
+
+    wordTimers.push(setTimeout(() => {
+      span.classList.add("reveal");
+    }, 350 + i * 180));
+  });
+
+  requestAnimationFrame(() => {
+    line.classList.add("visible");
+  });
+
+  const duration = Math.max(4500, words.length * 650 + 2500);
+  progress.style.transition = "none";
+  progress.style.width = (current / lyrics.length * 100) + "%";
+
+  setTimeout(() => {
+    line.classList.remove("visible");
+    line.classList.add("leaving");
+
+    setTimeout(() => {
+      current++;
+      showLine();
+    }, 1600);
+  }, duration);
+}
+
+setTimeout(showLine, 1800);
+
+
+// ذرات نور
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+let width, height, particles = [];
+
+function resize() {
+  const ratio = Math.min(devicePixelRatio || 1, 2);
+  width = innerWidth;
+  height = innerHeight;
+  canvas.width = width * ratio;
+  canvas.height = height * ratio;
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+  particles = Array.from({length: 150}, () => ({
+    x: Math.random() * width,
+    y: Math.random() * height,
+    r: Math.random() * 2 + .3,
+    speed: Math.random() * .45 + .12,
+    alpha: Math.random() * .8 + .1,
+    phase: Math.random() * 6.28,
+    drift: Math.random() * .5 - .25
+  }));
+}
+
+let tick = 0;
+
+function animate() {
+  ctx.clearRect(0, 0, width, height);
+  tick += .01;
+
+  particles.forEach(p => {
+    p.y -= p.speed;
+    p.x += Math.sin(tick + p.phase) * .25 + p.drift * .1;
+
+    if (p.y < -5) {
+      p.y = height + 5;
+      p.x = Math.random() * width;
+    }
+
+    const glow = p.alpha * (.5 + Math.sin(tick * 2 + p.phase) * .3);
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(177,213,255,${glow})`;
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = "#7dbaff";
+    ctx.fill();
+  });
+
+  // موج‌های آرام
+  for (let j = 0; j < 3; j++) {
+    ctx.beginPath();
+    const base = height * (.78 + j * .055);
+
+    for (let x = 0; x <= width; x += 8) {
+      const y = base +
+        Math.sin(x * .009 + tick + j) * 9 +
+        Math.sin(x * .018 - tick * 1.5) * 4;
+
+      if (x === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+
+    ctx.strokeStyle = `rgba(91,157,211,${.10 - j * .02})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  requestAnimationFrame(animate);
+}
+
+resize();
+animate();
+addEventListener("resize", resize);
+</script>
+
+</body>
+</html>
